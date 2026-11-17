@@ -46,7 +46,7 @@ describe('Usdt0ProtocolSolana with a solana wallet account', () => {
     test('should successfully perform a bridge operation', async () => {
       const result = await protocol.bridge({ targetChain: 'arbitrum', recipient: EVM_ADDRESS, token: MINT, amount: 1_000_000 })
 
-      expect(result).toEqual({ hash: SIGNATURE, fee: NETWORK_FEE, bridgeFee: NATIVE_FEE })
+      expect(result).toEqual({ hash: SIGNATURE, fee: NETWORK_FEE, bridgeFee: NATIVE_FEE, oftFee: 300n, toTokenAmount: 999_700n })
       expect(simulatedFeePayer(rpc)).toBe(sender)
 
       const { feePayer, signatures, oftData } = decodeTransaction(rpc.sendTransaction.mock.calls[0][0])
@@ -79,7 +79,7 @@ describe('Usdt0ProtocolSolana with a solana wallet account', () => {
 
       const result = await protocol.bridge({ targetChain: 'arbitrum', recipient: EVM_ADDRESS, token: MINT, amount: 100 })
 
-      expect(result).toEqual({ hash: SIGNATURE, fee: NETWORK_FEE, bridgeFee: NATIVE_FEE })
+      expect(result).toEqual({ hash: SIGNATURE, fee: NETWORK_FEE, bridgeFee: NATIVE_FEE, oftFee: 0n, toTokenAmount: 100n })
     })
 
     test('should throw if the account is read-only', async () => {
@@ -128,10 +128,20 @@ describe('Usdt0ProtocolSolana with a solana wallet account', () => {
   })
 
   describe('quoteBridge', () => {
+    test.each([
+      [7_649_561n, 2_294n, 7_647_267n],
+      [7_616_669n, 2_285n, 7_614_384n],
+      [2n ** 64n - 1n, 5_534_023_222_112_865n, 18_441_210_050_487_438_750n]
+    ])('should quote the net amount with integer oft fee rounding for %p', async (amount, oftFee, toTokenAmount) => {
+      const result = await protocol.quoteBridge({ targetChain: 'arbitrum', recipient: EVM_ADDRESS, token: MINT, amount })
+
+      expect(result).toEqual({ fee: NETWORK_FEE, bridgeFee: NATIVE_FEE, oftFee, toTokenAmount })
+    })
+
     test('should successfully quote a bridge operation', async () => {
       const result = await protocol.quoteBridge({ targetChain: 'arbitrum', recipient: EVM_ADDRESS, token: MINT, amount: 100 })
 
-      expect(result).toEqual({ fee: NETWORK_FEE, bridgeFee: NATIVE_FEE })
+      expect(result).toEqual({ fee: NETWORK_FEE, bridgeFee: NATIVE_FEE, oftFee: 0n, toTokenAmount: 100n })
       expect(simulatedFeePayer(rpc)).toBe(sender)
       expect(rpc.sendTransaction).not.toHaveBeenCalled()
     })
@@ -141,7 +151,7 @@ describe('Usdt0ProtocolSolana with a solana wallet account', () => {
 
       const result = await protocol.quoteBridge({ targetChain: 'arbitrum', recipient: EVM_ADDRESS, token: MINT, amount: 100 })
 
-      expect(result).toEqual({ fee: NETWORK_FEE, bridgeFee: NATIVE_FEE })
+      expect(result).toEqual({ fee: NETWORK_FEE, bridgeFee: NATIVE_FEE, oftFee: 0n, toTokenAmount: 100n })
       expect(decodeMessage(rpc.getFeeForMessage.mock.calls[0][0]).feePayer).toBe(sender)
     })
 

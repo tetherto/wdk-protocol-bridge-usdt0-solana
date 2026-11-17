@@ -68,6 +68,21 @@ import {
 
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeProtocolConfig} BridgeProtocolConfig */
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeResult} BridgeResult */
+
+/**
+ * The usdt0-specific fields of a bridge's result, on top of the WDK {@link BridgeResult}.
+ *
+ * @typedef {Object} Usdt0BridgeResultExtras
+ * @property {bigint} oftFee - The fee the oft program deducts from the amount, in the token's base units.
+ * @property {bigint} toTokenAmount - The amount the recipient receives after the oft fee, in the token's base units.
+ */
+
+/**
+ * The full result of {@link Usdt0ProtocolSolana#bridge}.
+ *
+ * @typedef {BridgeResult & Usdt0BridgeResultExtras} Usdt0BridgeResult
+ */
+
 /** @typedef {import('@tetherto/wdk-wallet/protocols').SwidgeSupportedChain} SwidgeSupportedChain */
 /** @typedef {import('@tetherto/wdk-wallet/protocols').SwidgeSupportedToken} SwidgeSupportedToken */
 /** @typedef {import('@tetherto/wdk-wallet/protocols').SwidgeSupportedTokensOptions} SwidgeSupportedTokensOptions */
@@ -89,7 +104,7 @@ const SEND_COMPUTE_UNIT_LIMIT = 400_000
 const U64_MAX = 0xffffffffffffffffn
 
 /**
- * @typedef {object} BridgeOptions
+ * @typedef {Object} BridgeOptions
  * @property {string} targetChain - The identifier of the destination blockchain (e.g., "arbitrum").
  * @property {string} recipient - The address of the recipient.
  * @property {string} token - The spl mint address of the token to bridge.
@@ -97,7 +112,7 @@ const U64_MAX = 0xffffffffffffffffn
  */
 
 /**
- * @typedef {object} OftSendParam
+ * @typedef {Object} OftSendParam
  * @property {number} dstEid - The LayerZero destination endpoint id.
  * @property {ReadonlyUint8Array} to - The recipient address, encoded as 32 bytes.
  * @property {bigint} amountLD - The amount to send, in local decimals.
@@ -164,7 +179,7 @@ export default class Usdt0ProtocolSolana extends BridgeProtocol {
    *   'bridgeMaxFee' overrides the protocol's. 'bridgeMaxFee' caps 'fee' plus 'bridgeFee', in lamports; for a
    *   gasless account it caps 'bridgeFee' alone, and 'transactionMaxFee' caps 'fee', the paymaster fee in the
    *   paymaster token, which includes the layerzero fee.
-   * @returns {Promise<BridgeResult>} The bridge's result.
+   * @returns {Promise<Usdt0BridgeResult>} The bridge's result.
    * @throws {AccountRequiredError} If the protocol has been initialized with a read-only account.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    * @throws {ValueError} If the target chain, token, amount or recipient is not valid, or the oft program rejects the
@@ -183,7 +198,7 @@ export default class Usdt0ProtocolSolana extends BridgeProtocol {
 
     const { bridgeMaxFee = this._config.bridgeMaxFee, ...accountConfig } = config ?? {}
 
-    const { tx, bridgeFee } = await this._getBridgeTransaction(options)
+    const { tx, bridgeFee, oftFee, toTokenAmount } = await this._getBridgeTransaction(options)
 
     if (this._getPaymasterAddress()) {
       if (bridgeMaxFee !== undefined && bridgeFee > bridgeMaxFee) {
@@ -192,7 +207,7 @@ export default class Usdt0ProtocolSolana extends BridgeProtocol {
 
       const { hash, fee } = await this._account.sendTransaction(tx, accountConfig)
 
-      return { hash, fee, bridgeFee }
+      return { hash, fee, bridgeFee, oftFee, toTokenAmount }
     }
 
     const { fee } = await this._account.quoteSendTransaction(tx)
@@ -203,7 +218,7 @@ export default class Usdt0ProtocolSolana extends BridgeProtocol {
 
     const { hash } = await this._account.sendTransaction(tx)
 
-    return { hash, fee, bridgeFee }
+    return { hash, fee, bridgeFee, oftFee, toTokenAmount }
   }
 
   /**
@@ -212,7 +227,7 @@ export default class Usdt0ProtocolSolana extends BridgeProtocol {
    * @param {BridgeOptions} options - The bridge's options.
    * @param {Pick<PaymasterConfigOverrides, 'paymasterToken'>} [config] - If the protocol has been
    *   initialized with a gasless wallet account, it can be used to override its paymaster token.
-   * @returns {Promise<Omit<BridgeResult, 'hash'>>} The bridge's quotes.
+   * @returns {Promise<Omit<Usdt0BridgeResult, 'hash'>>} The bridge's quotes.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    * @throws {ValueError} If the target chain, token, amount or recipient is not valid, or the oft program rejects the
    *   amount or the target chain.
@@ -222,11 +237,11 @@ export default class Usdt0ProtocolSolana extends BridgeProtocol {
       throw new ProviderRequiredError('The wallet must be connected to a provider in order to quote bridge operations.')
     }
 
-    const { tx, bridgeFee } = await this._getBridgeTransaction(options)
+    const { tx, bridgeFee, oftFee, toTokenAmount } = await this._getBridgeTransaction(options)
 
     const { fee } = await this._account.quoteSendTransaction(tx, config)
 
-    return { fee, bridgeFee }
+    return { fee, bridgeFee, oftFee, toTokenAmount }
   }
 
   /**
@@ -379,7 +394,7 @@ export default class Usdt0ProtocolSolana extends BridgeProtocol {
 
     const tx = appendTransactionMessageInstructions(instructions, createTransactionMessage({ version: 0 }))
 
-    return { tx, bridgeFee }
+    return { tx, bridgeFee, oftFee, toTokenAmount: sendParam.minAmountLD }
   }
 
   /** @private */

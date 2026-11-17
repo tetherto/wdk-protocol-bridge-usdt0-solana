@@ -11,7 +11,7 @@ export default class Usdt0ProtocolSolana extends BridgeProtocol {
      *   'bridgeMaxFee' overrides the protocol's. 'bridgeMaxFee' caps 'fee' plus 'bridgeFee', in lamports; for a
      *   gasless account it caps 'bridgeFee' alone, and 'transactionMaxFee' caps 'fee', the paymaster fee in the
      *   paymaster token, which includes the layerzero fee.
-     * @returns {Promise<BridgeResult>} The bridge's result.
+     * @returns {Promise<Usdt0BridgeResult>} The bridge's result.
      * @throws {AccountRequiredError} If the protocol has been initialized with a read-only account.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      * @throws {ValueError} If the target chain, token, amount or recipient is not valid, or the oft program rejects the
@@ -19,19 +19,19 @@ export default class Usdt0ProtocolSolana extends BridgeProtocol {
      * @throws {MaximumFeeExceededError} If the bridge's costs exceed 'bridgeMaxFee', or a gasless account's
      *   paymaster fee exceeds 'transactionMaxFee'.
      */
-    bridge(options: BridgeOptions, config?: PaymasterConfigOverrides & Pick<BridgeProtocolConfig, "bridgeMaxFee">): Promise<BridgeResult>;
+    bridge(options: BridgeOptions, config?: PaymasterConfigOverrides & Pick<BridgeProtocolConfig, "bridgeMaxFee">): Promise<Usdt0BridgeResult>;
     /**
      * Quotes the costs of a bridge operation.
      *
      * @param {BridgeOptions} options - The bridge's options.
      * @param {Pick<PaymasterConfigOverrides, 'paymasterToken'>} [config] - If the protocol has been
      *   initialized with a gasless wallet account, it can be used to override its paymaster token.
-     * @returns {Promise<Omit<BridgeResult, 'hash'>>} The bridge's quotes.
+     * @returns {Promise<Omit<Usdt0BridgeResult, 'hash'>>} The bridge's quotes.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      * @throws {ValueError} If the target chain, token, amount or recipient is not valid, or the oft program rejects the
      *   amount or the target chain.
      */
-    quoteBridge(options: BridgeOptions, config?: Pick<PaymasterConfigOverrides, "paymasterToken">): Promise<Omit<BridgeResult, "hash">>;
+    quoteBridge(options: BridgeOptions, config?: Pick<PaymasterConfigOverrides, "paymasterToken">): Promise<Omit<Usdt0BridgeResult, "hash">>;
     /**
      * Retrieves the chains supported by the protocol for bridge operations.
      *
@@ -72,6 +72,23 @@ export default class Usdt0ProtocolSolana extends BridgeProtocol {
 }
 export type BridgeProtocolConfig = import("@tetherto/wdk-wallet/protocols").BridgeProtocolConfig;
 export type BridgeResult = import("@tetherto/wdk-wallet/protocols").BridgeResult;
+/**
+ * The usdt0-specific fields of a bridge's result, on top of the WDK {@link BridgeResult}.
+ */
+export type Usdt0BridgeResultExtras = {
+    /**
+     * - The fee the oft program deducts from the amount, in the token's base units.
+     */
+    oftFee: bigint;
+    /**
+     * - The amount the recipient receives after the oft fee, in the token's base units.
+     */
+    toTokenAmount: bigint;
+};
+/**
+ * The full result of {@link Usdt0ProtocolSolana#bridge}.
+ */
+export type Usdt0BridgeResult = BridgeResult & Usdt0BridgeResultExtras;
 export type SwidgeSupportedChain = import("@tetherto/wdk-wallet/protocols").SwidgeSupportedChain;
 export type SwidgeSupportedToken = import("@tetherto/wdk-wallet/protocols").SwidgeSupportedToken;
 export type SwidgeSupportedTokensOptions = import("@tetherto/wdk-wallet/protocols").SwidgeSupportedTokensOptions;

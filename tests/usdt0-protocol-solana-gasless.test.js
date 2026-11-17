@@ -57,7 +57,7 @@ describe('Usdt0ProtocolSolana with a solana gasless wallet account', () => {
       const result = await protocol.bridge({ targetChain: 'arbitrum', recipient: EVM_ADDRESS, token: MINT, amount: 1_000_000 },
         { paymasterToken: { address: USDC_MINT }, transactionMaxFee: PAYMASTER_FEE, bridgeMaxFee: NATIVE_FEE })
 
-      expect(result).toEqual({ hash: 'gasless-signature', fee: PAYMASTER_FEE, bridgeFee: NATIVE_FEE })
+      expect(result).toEqual({ hash: 'gasless-signature', fee: PAYMASTER_FEE, bridgeFee: NATIVE_FEE, oftFee: 300n, toTokenAmount: 999_700n })
       expect(simulatedFeePayer(rpc)).toBe(PAYMASTER)
 
       expect(kora.getPaymentInstruction).toHaveBeenCalledTimes(1)
@@ -113,8 +113,8 @@ describe('Usdt0ProtocolSolana with a solana gasless wallet account', () => {
     test('should quote from a read-only gasless account with the paymaster as the payer', async () => {
       const protocol = new Usdt0ProtocolSolana(new WalletAccountReadOnlySolanaGasless(sender, createConfig()))
 
-      expect(await protocol.quoteBridge({ targetChain: 'arbitrum', recipient: EVM_ADDRESS, token: MINT, amount: 100 }, { paymasterToken: { address: USDC_MINT } }))
-        .toEqual({ fee: PAYMASTER_FEE, bridgeFee: NATIVE_FEE })
+      expect(await protocol.quoteBridge({ targetChain: 'arbitrum', recipient: EVM_ADDRESS, token: MINT, amount: 7_649_561n }, { paymasterToken: { address: USDC_MINT } }))
+        .toEqual({ fee: PAYMASTER_FEE, bridgeFee: NATIVE_FEE, oftFee: 2_294n, toTokenAmount: 7_647_267n })
       expect(simulatedFeePayer(rpc)).toBe(PAYMASTER)
 
       const [{ transaction, fee_token: feeToken }] = kora.getPaymentInstruction.mock.calls[0]
